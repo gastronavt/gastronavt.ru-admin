@@ -1,0 +1,420 @@
+import { useState } from 'react'
+import { Input } from '@/components/ui'
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+type ImageCategory = 'blog' | 'cases' | 'pages' | 'shared'
+
+interface MediaImage {
+  id: number
+  name: string
+  alt: string
+  description: string
+  size: string
+  resolution: string
+  date: string
+  category: ImageCategory
+  usedIn: string[]
+  gradient: string
+}
+
+// ── Mock data ────────────────────────────────────────────────────────────────
+
+const IMAGES: MediaImage[] = [
+  { id: 1, name: 'telegram-bot-hero.jpg', alt: 'Telegram-бот для ресторана — интерфейс чата', description: '', size: '248 КБ', resolution: '1200×630', date: '28 июл 2026', category: 'blog', usedIn: ['Статья: Как Telegram-бот увеличил выручку'], gradient: 'from-blue-400 to-cyan-500' },
+  { id: 2, name: 'crm-dashboard.png', alt: 'Панель управления CRM Gastronavt', description: 'Скриншот дашборда CRM-системы', size: '384 КБ', resolution: '1440×900', date: '25 июл 2026', category: 'pages', usedIn: ['Страница: Продукты', 'Статья: CRM-интеграция'], gradient: 'from-violet-400 to-purple-500' },
+  { id: 3, name: 'mobile-app-screenshot.jpg', alt: '', description: '', size: '192 КБ', resolution: '375×812', date: '23 июл 2026', category: 'pages', usedIn: ['Страница: Продукты'], gradient: 'from-emerald-400 to-teal-500' },
+  { id: 4, name: 'dodo-pizza-case.jpg', alt: 'Кейс Додо Пицца — рост заказов через бот', description: 'Обложка кейса', size: '312 КБ', resolution: '1200×630', date: '20 июл 2026', category: 'cases', usedIn: ['Кейс: Додо Пицца +42% выручки'], gradient: 'from-amber-400 to-orange-500' },
+  { id: 5, name: 'office-spb.jpg', alt: 'Офис Gastronavt в Санкт-Петербурге', description: '', size: '512 КБ', resolution: '1920×1080', date: '18 июл 2026', category: 'blog', usedIn: ['Новость: Открытие офиса в СПб'], gradient: 'from-cyan-400 to-blue-500' },
+  { id: 6, name: 'loyalty-chart.png', alt: '', description: '', size: '98 КБ', resolution: '800×600', date: '10 июл 2026', category: 'blog', usedIn: [], gradient: 'from-rose-400 to-pink-500' },
+  { id: 7, name: 'yakitoriya-logo.png', alt: 'Логотип Якитория', description: '', size: '28 КБ', resolution: '400×200', date: '1 июл 2026', category: 'cases', usedIn: ['Кейс: Якитория Казань'], gradient: 'from-slate-400 to-slate-500' },
+  { id: 8, name: 'restaurant-photo.jpg', alt: '', description: 'Фото ресторана-клиента', size: '642 КБ', resolution: '1920×1280', date: '5 июл 2026', category: 'shared', usedIn: ['Страница: Главная', 'Кейс: Шоколадница'], gradient: 'from-indigo-400 to-blue-600' },
+  { id: 9, name: 'hero-gastronavt.jpg', alt: 'Gastronavt — цифровизация ресторанного бизнеса', description: 'Главный баннер сайта', size: '186 КБ', resolution: '1440×700', date: '29 июн 2026', category: 'shared', usedIn: ['Страница: Главная'], gradient: 'from-blue-500 to-violet-600' },
+  { id: 10, name: 'max-bot-preview.jpg', alt: '', description: '', size: '274 КБ', resolution: '1200×630', date: '22 июн 2026', category: 'blog', usedIn: [], gradient: 'from-teal-400 to-emerald-500' },
+  { id: 11, name: 'shokolad-case.jpg', alt: 'Кейс Шоколадница — программа лояльности', description: '', size: '198 КБ', resolution: '1200×630', date: '15 июн 2026', category: 'cases', usedIn: ['Кейс: Шоколадница 18 000 участников'], gradient: 'from-amber-500 to-rose-500' },
+  { id: 12, name: 'prices-hero.jpg', alt: '', description: '', size: '134 КБ', resolution: '1200×500', date: '10 июн 2026', category: 'pages', usedIn: ['Страница: Цены'], gradient: 'from-slate-500 to-slate-700' },
+]
+
+const CATEGORY_LABELS: Record<ImageCategory | 'all', string> = {
+  all: 'Все',
+  blog: 'Блог',
+  cases: 'Кейсы',
+  pages: 'Страницы',
+  shared: 'Общие',
+}
+
+const SORT_OPTIONS = [
+  { value: 'date-desc', label: 'Сначала новые' },
+  { value: 'date-asc', label: 'Сначала старые' },
+  { value: 'name-asc', label: 'По имени А–Я' },
+  { value: 'size-desc', label: 'По размеру' },
+]
+
+const USAGE_CATEGORY_BADGE: Record<ImageCategory, { label: string; cls: string }> = {
+  blog: { label: 'Блог', cls: 'bg-blue-50 text-blue-700' },
+  cases: { label: 'Кейс', cls: 'bg-violet-50 text-violet-700' },
+  pages: { label: 'Страница', cls: 'bg-emerald-50 text-emerald-700' },
+  shared: { label: 'Общий', cls: 'bg-slate-100 text-slate-600' },
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function sortImages(images: MediaImage[], sort: string): MediaImage[] {
+  return [...images].sort((a, b) => {
+    if (sort === 'name-asc') return a.name.localeCompare(b.name)
+    if (sort === 'size-desc') return parseInt(b.size) - parseInt(a.size)
+    if (sort === 'date-asc') return a.id - b.id
+    return b.id - a.id
+  })
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function UsageBadge({ category }: { category: ImageCategory }) {
+  const b = USAGE_CATEGORY_BADGE[category]
+  return <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${b.cls}`}>{b.label}</span>
+}
+
+function AltWarningCard({ count, onFix }: { count: number; onFix: () => void }) {
+  if (count === 0) return null
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 flex items-center gap-4 mb-6">
+      <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-amber-900">Изображения без ALT-текста</p>
+        <p className="text-xs text-amber-700 mt-0.5">{count} {count === 1 ? 'изображение без описания' : 'изображения без описания'} — это снижает доступность и SEO</p>
+      </div>
+      <button
+        onClick={onFix}
+        className="text-xs font-medium text-amber-700 border border-amber-300 bg-white hover:bg-amber-50 px-3 py-1.5 rounded-lg cursor-pointer transition-colors flex-shrink-0"
+      >
+        Исправить
+      </button>
+    </div>
+  )
+}
+
+function ImageCard({
+  image,
+  selected,
+  onSelect,
+  onClick,
+}: {
+  image: MediaImage
+  selected: boolean
+  onSelect: (e: React.MouseEvent) => void
+  onClick: () => void
+}) {
+  return (
+    <div
+      className={`group relative bg-white rounded-xl border-2 overflow-hidden cursor-pointer transition-all ${
+        selected ? 'border-blue-500 shadow-md' : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
+      }`}
+      onClick={onClick}
+    >
+      {/* Checkbox */}
+      <div
+        className={`absolute top-2 left-2 z-10 transition-opacity ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+        onClick={onSelect}
+      >
+        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selected ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+          {selected && (
+            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          )}
+        </div>
+      </div>
+
+      {/* No ALT indicator */}
+      {!image.alt && (
+        <div className="absolute top-2 right-2 z-10 w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center" title="Нет ALT-текста">
+          <span className="text-white text-xs font-bold leading-none">!</span>
+        </div>
+      )}
+
+      {/* Preview */}
+      <div className={`h-32 bg-gradient-to-br ${image.gradient} flex items-center justify-center relative overflow-hidden`}>
+        <svg className="w-10 h-10 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 15l-5-5L5 21"/>
+        </svg>
+
+        {/* Hover actions */}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+          <ActionBtn title="Предпросмотр" onClick={e => e.stopPropagation()}>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          </ActionBtn>
+          <ActionBtn title="Переименовать" onClick={e => e.stopPropagation()}>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </ActionBtn>
+          <ActionBtn title="Скопировать URL" onClick={e => e.stopPropagation()}>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          </ActionBtn>
+          <ActionBtn title="Удалить" danger onClick={e => e.stopPropagation()}>
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </ActionBtn>
+        </div>
+      </div>
+
+      {/* Meta */}
+      <div className="p-3">
+        <p className="text-xs font-medium text-slate-800 truncate mb-1" title={image.name}>{image.name}</p>
+        <div className="flex items-center justify-between gap-1">
+          <p className="text-xs text-slate-400">{image.date.split(' ').slice(0, 2).join(' ')} · {image.size}</p>
+          <UsageBadge category={image.category} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ActionBtn({ children, title, danger = false, onClick }: { children: React.ReactNode; title: string; danger?: boolean; onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      title={title}
+      onClick={onClick}
+      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${danger ? 'bg-red-500/80 hover:bg-red-500 text-white' : 'bg-white/90 hover:bg-white text-slate-700'}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function DetailDrawer({ image, onClose }: { image: MediaImage; onClose: () => void }) {
+  const [alt, setAlt] = useState(image.alt)
+  const [desc, setDesc] = useState(image.description)
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
+      <div className="w-80 bg-white border-l border-slate-200 h-full overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-900">Детали изображения</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 cursor-pointer transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {/* Preview */}
+        <div className={`h-44 bg-gradient-to-br ${image.gradient} flex items-center justify-center`}>
+          <svg className="w-14 h-14 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 15l-5-5L5 21"/>
+          </svg>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {/* File name */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Имя файла</p>
+            <p className="text-sm font-medium text-slate-800 break-all font-mono">{image.name}</p>
+          </div>
+
+          {/* ALT text */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">ALT-текст</p>
+              {!alt && <span className="text-xs text-amber-600 font-medium">Не заполнен</span>}
+            </div>
+            <textarea
+              value={alt}
+              onChange={e => setAlt(e.target.value)}
+              placeholder="Описание изображения для поисковых систем..."
+              rows={3}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Описание <span className="normal-case font-normal text-slate-300">(необязательно)</span></p>
+            <textarea
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+              placeholder="Внутреннее описание файла..."
+              rows={2}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
+
+          {/* File info */}
+          <div className="rounded-xl bg-slate-50 border border-slate-100 divide-y divide-slate-100">
+            {[
+              { label: 'Разрешение', value: image.resolution },
+              { label: 'Размер файла', value: image.size },
+              { label: 'Дата загрузки', value: image.date },
+              { label: 'Категория', value: CATEGORY_LABELS[image.category] },
+            ].map(row => (
+              <div key={row.label} className="flex justify-between px-4 py-2.5">
+                <span className="text-xs text-slate-400">{row.label}</span>
+                <span className="text-xs font-medium text-slate-700">{row.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Used in */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Используется в</p>
+            {image.usedIn.length > 0 ? (
+              <div className="space-y-1.5">
+                {image.usedIn.map((u, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                    <svg className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101"/><path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 015.656 0l-4 4a4 4 0 01-5.656-5.656l1.102-1.1"/></svg>
+                    {u}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic">Не используется</p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-2 border-t border-slate-100">
+            <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg py-2 cursor-pointer transition-colors">Сохранить</button>
+            <button className="px-3 py-2 border border-slate-200 text-slate-500 hover:bg-slate-50 text-sm rounded-lg cursor-pointer transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function MediaLibrary() {
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState<'all' | ImageCategory>('all')
+  const [sort, setSort] = useState('date-desc')
+  const [selected, setSelected] = useState<number[]>([])
+  const [detail, setDetail] = useState<MediaImage | null>(null)
+
+  const imagesWithoutAlt = IMAGES.filter(img => !img.alt)
+
+  const filtered = sortImages(
+    IMAGES.filter(img => {
+      if (category !== 'all' && img.category !== category) return false
+      if (search && !img.name.toLowerCase().includes(search.toLowerCase())) return false
+      return true
+    }),
+    sort
+  )
+
+  const toggleSelect = (e: React.MouseEvent, id: number) => {
+    e.stopPropagation()
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const clearSelection = () => setSelected([])
+
+  return (
+    <div className="p-7 max-w-7xl mx-auto">
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Медиатека</h1>
+          <p className="text-sm text-slate-400 mt-1">{IMAGES.length} изображений</p>
+        </div>
+        <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg cursor-pointer transition-colors">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          Загрузить
+        </button>
+      </div>
+
+      {/* ALT warning card */}
+      <AltWarningCard count={imagesWithoutAlt.length} onFix={() => setCategory('all')} />
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <Input
+          value={search}
+          onChange={setSearch}
+          placeholder="Поиск по имени файла..."
+          className="w-60"
+          icon={
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          }
+        />
+
+        {/* Category filter */}
+        <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 gap-0.5">
+          {(Object.keys(CATEGORY_LABELS) as Array<'all' | ImageCategory>).map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md cursor-pointer transition-colors ${
+                category === cat ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              {CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+        </div>
+
+        {/* Sort */}
+        <select
+          value={sort}
+          onChange={e => setSort(e.target.value)}
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+        >
+          {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+
+        <span className="text-sm text-slate-400 ml-auto">{filtered.length} файлов</span>
+      </div>
+
+      {/* Bulk action bar */}
+      {selected.length > 0 && (
+        <div className="flex items-center gap-3 px-5 py-3 bg-blue-50 border border-blue-200 rounded-xl mb-5 text-sm">
+          <span className="font-semibold text-blue-800">Выбрано: {selected.length}</span>
+          <div className="w-px h-4 bg-blue-200" />
+          <button className="text-blue-700 hover:text-blue-900 cursor-pointer transition-colors font-medium">Удалить</button>
+          <button className="text-blue-700 hover:text-blue-900 cursor-pointer transition-colors font-medium">Изменить ALT</button>
+          <button className="text-blue-700 hover:text-blue-900 cursor-pointer transition-colors font-medium">Сменить категорию</button>
+          <button onClick={clearSelection} className="ml-auto text-blue-400 hover:text-blue-600 cursor-pointer transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      )}
+
+      {/* Image grid */}
+      {filtered.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {filtered.map(img => (
+            <ImageCard
+              key={img.id}
+              image={img}
+              selected={selected.includes(img.id)}
+              onSelect={e => toggleSelect(e, img.id)}
+              onClick={() => setDetail(img)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="py-20 text-center text-slate-400">
+          <svg className="w-10 h-10 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <p className="text-sm">Изображения не найдены</p>
+          <button onClick={() => { setSearch(''); setCategory('all') }} className="mt-2 text-sm text-blue-600 hover:underline cursor-pointer">Сбросить фильтры</button>
+        </div>
+      )}
+
+      {/* Detail drawer */}
+      {detail && <DetailDrawer image={detail} onClose={() => setDetail(null)} />}
+    </div>
+  )
+}

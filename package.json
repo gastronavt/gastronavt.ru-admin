@@ -1,0 +1,44 @@
+import { useState } from 'react'
+import Sidebar from '@/components/Sidebar'
+import TopBar from '@/components/TopBar'
+import Auth from '@/screens/Auth'
+import Dashboard from '@/screens/Dashboard'
+import Content from '@/screens/Content'
+import ContentPlan from '@/screens/ContentPlan'
+import MediaLibrary from '@/screens/MediaLibrary'
+import SEO from '@/screens/SEO'
+import Settings from '@/screens/Settings'
+import Users from '@/screens/Users'
+import type { PageId } from '@/types'
+
+export default function App() {
+  const [authed, setAuthed] = useState(false)
+  const [page, setPage] = useState<PageId>('dashboard')
+
+  if (!authed) return <Auth onAuth={() => setAuthed(true)} />
+
+  const renderPage = () => {
+    switch (page) {
+      case 'dashboard': return <Dashboard onNavigate={setPage} />
+      case 'content': return <Content />
+      case 'content-plan': return <ContentPlan />
+      case 'media-library': return <MediaLibrary />
+      case 'seo': return <SEO />
+      case 'settings': return <Settings />
+      case 'users': return <Users />
+      default: return <Dashboard onNavigate={setPage} />
+    }
+  }
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-slate-50">
+      <Sidebar currentPage={page} onNavigate={setPage} />
+      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+        <TopBar currentPage={page} />
+        <main className="flex-1 overflow-y-auto">
+          {renderPage()}
+        </main>
+      </div>
+    </div>
+  )
+}
